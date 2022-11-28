@@ -5,20 +5,6 @@ import pandas as pd
 import seaborn as sns
 
 
-def get_columns_by_source(df):
-    is_phq_column = lambda x: True if (x.find('DPQ') > -1) else False
-    phq_cols = [col for col in df.columns if is_phq_column(col)]
-    
-    is_hei_column = lambda x: True if (x.find('HEI2015') > -1) else False
-    hei_cols = [col for col in df.columns if is_hei_column(col)]
-    
-    demo_cols = ['RIAGENDR', 'RIDAGEYR', 'RIDRETH1', 'DMDEDUC', 'INDFMINC']
-    pag_cols = ['PAG_MINW', 'ADHERENCE']
-    phq_score_cols = ['PHQ9', 'PHQ_GRP']
-    
-    return demo_cols, phq_cols, hei_cols, pag_cols, phq_score_cols
-
-
 def plot_phq9_correlation(df, columns, ignore_blank_phq9_rows=True, decimal_cases=2):
     segmented_df = df[columns + ['PHQ9']]
     if ignore_blank_phq9_rows:
@@ -33,25 +19,12 @@ def plot_phq9_correlation(df, columns, ignore_blank_phq9_rows=True, decimal_case
     )
 
 
-def get_higher_correlations(df, col='PHQ9'):
-#     correlation_thresholds = {
-#         'strong': 0.7,  # acima de 0.7
-#         'moderate': 0.5,  # entre 0.7 e 0.5
-#         'weak': 0.3,  # entre 0.5 e 0.3
-#     }
-#     correlation_levels = {}
-#     for level in correlation_thresholds:
-#         correlation_levels[level] = corr[corr > correlation_thresholds[level]] + corr[corr < correlation_thresholds[level] * -1]
-        
-#     return correlation_levels
-    
-    correlation_threshold = 0.3
+def get_higher_correlations(df, col='PHQ9', corr_threshold = 0.3):
     corr = df.corr().loc[col]
-    
-    return pd.concat([corr[corr > correlation_threshold], corr[corr < correlation_threshold * -1]])
+    return pd.concat([corr[corr > corr_threshold], corr[corr < corr_threshold * -1]])
 
 
-def plot_for_cols(df, cols, func, kwargs={}, figsize=(20, 12), max_plots_per_row=3, y=None):
+def plot_for_cols(df, cols, func, y=None, figsize=(20, 12), max_plots_per_row=3, kwargs={}):
     n_cols = len(cols)
     plot_cols = max_plots_per_row
     plot_rows = math.ceil(n_cols / plot_cols)
@@ -66,10 +39,10 @@ def plot_for_cols(df, cols, func, kwargs={}, figsize=(20, 12), max_plots_per_row
         if y:
             func(data=df, x=col, y=y, **kwargs)
         else:
-            func(data=df, x=df[col], **kwargs)
+            func(data=df, x=col, **kwargs)
 
 
-def column_analysis(df, col, normalize=True, kwargs={}):
+def column_analysis(df, col, normalize=False, plot_kwargs={}):
     print(f'Coluna: {col}')
     
     print(f'\ndescribe():')
@@ -82,7 +55,29 @@ def column_analysis(df, col, normalize=True, kwargs={}):
     print(df[col].isnull().sum())
     
     print(f'\nhistplot():')
-    sns.histplot(data=df, x=df[col], discrete=True)
+    sns.histplot(data=df, x=df[col], **plot_kwargs)
     plt.show()
     print('\n')
+
+
+def validate_derived_category_columns(df, orig_col, cols):
+    """
+    Testa se a soma dos valores de colunas derivadas de uma categoria bate com os valores não nulos da coluna original
+    """
+    non_null = df[orig_col].notna().sum()
     
+    cols_sum = 0
+    for col in cols:
+        cols_sum += df[df[col] == 1][col].sum()
+        
+    return non_null == cols_sum
+
+
+def validate_score_columns(df, score_col, cols, decimals=5):
+    calc_score = df[cols].sum(axis=1)
+    
+    # Devido às diferenças de ponto flutuante, é necessário arredondar as casas decimais mais distantes
+    rounded_calc_score = np.round(calc_score, decimals=decimals)
+    rounded_score_col = np.round(df[score_col], decimals=decimals)
+    
+    return rounded_score_col.equals(rounded_calc_score)
