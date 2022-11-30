@@ -25,6 +25,14 @@ def get_higher_correlations(df, col='PHQ9', corr_threshold = 0.3):
 
 
 def plot_for_cols(df, cols, func, y=None, figsize=(20, 12), max_plots_per_row=3, kwargs={}):
+    """
+    Plota as colunas `cols` do dataframe `df` usando a função de plot `func`.
+    
+    Uma forma mais genérica e flexível de:
+    df[cols].hist(layout=(5, 3), figsize=(15,12))
+    plt.suptitle('Cols Histograms')
+    """
+    
     n_cols = len(cols)
     plot_cols = max_plots_per_row
     plot_rows = math.ceil(n_cols / plot_cols)
@@ -42,22 +50,27 @@ def plot_for_cols(df, cols, func, y=None, figsize=(20, 12), max_plots_per_row=3,
             func(data=df, x=col, **kwargs)
 
 
-def column_analysis(df, col, normalize=False, plot_kwargs={}):
+def column_descriptive_analysis(df, col, plot_kwargs={}):
+    description = df[col].describe().reset_index().rename(
+        columns = {'index':'describe'}
+    )
+    value_counts = df[col].value_counts(dropna=False).reset_index().rename(
+        columns = {'index':'value counts'}
+    )
+    norm_value_counts = df[col].value_counts(dropna=False, normalize=True).reset_index().rename(
+        columns = {'index':'value percents'}
+    )
+    
+    analysis = pd.concat([description, value_counts, norm_value_counts], ignore_index=False, axis=1)
+    analysis = analysis.rename(columns = {col: ''})
+    
+    plot = sns.histplot(data=df, x=df[col], **plot_kwargs)
+    
     print(f'Coluna: {col}')
-    
-    print(f'\ndescribe():')
-    print(df[col].describe())
-    
-    print(f'\nvalue_counts(normalize={normalize}):')
-    print(df[col].value_counts(normalize=normalize))
-    
-    print(f'\nisnull():')
-    print(df[col].isnull().sum())
-    
-    print(f'\nhistplot():')
-    sns.histplot(data=df, x=df[col], **plot_kwargs)
     plt.show()
-    print('\n')
+    print(analysis.to_string(index=False))
+    
+    return analysis, plot
 
 
 def validate_derived_category_columns(df, orig_col, cols):

@@ -66,8 +66,3 @@ Quais vieses podem existir nos dados e quais as limitações das análises?
 O que de fato podemos inferir pensando em efeitos causais?
 
 MÃO NA MASSA!
-
-
-## Notebooks
-
-
